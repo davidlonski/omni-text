@@ -1,0 +1,172 @@
+# Omni-Text Application Rules for Cursor
+
+## Project Overview
+This is a Python application that extracts and processes text/images from various document formats (PDF, DOCX, PPTX) using OCR and AI-powered description generation.
+
+## Core Dependencies & Usage Patterns
+
+### Required Libraries
+- `streamlit`: Web UI framework
+- `google-generativeai`: AI text generation from images
+- `pytesseract`: OCR text extraction
+- `python-docx`, `python-pptx`, `PyPDF2`: Document parsing
+- `Pillow`: Image processing
+- `SQLAlchemy`: Database ORM
+- `python-dotenv`: Environment variable management
+
+### API Keys & Environment
+- Always use environment variables for API keys, never hardcode them
+- Use `python-dotenv` to load `.env` files
+- Example: `genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))`
+
+## Code Structure & Organization
+
+### File Organization
+- `util.py`: Core utility functions for document/image processing
+- `app.py`: Streamlit web application
+- `models.py`: SQLAlchemy database models
+- `test_*.py`: Testing and debugging scripts
+- `requirements.txt`: Python dependencies
+
+### Function Naming Conventions
+- Use `PascalCase` for main processing functions: `Extract_Office()`, `GenerateTextFormated()`
+- Use `snake_case` for helper functions: `extract_images_from_office()`, `natural_sort_key()`
+- Use descriptive names that indicate the function's purpose
+
+## Error Handling Patterns
+
+### Required Error Handling
+```python
+# Always wrap file operations and API calls in try/except
+try:
+    # File operations or API calls
+    result = some_operation()
+except Exception as e:
+    print(f"Error: {str(e)[:100]}...")
+    return ""  # or appropriate fallback
+```
+
+### Robust Processing Loops
+```python
+# When processing multiple items, continue on errors
+for item in items:
+    try:
+        # Process item
+        result = process(item)
+    except Exception as e:
+        print(f"Error processing {item}: {e}")
+        continue  # Don't break the entire loop
+```
+
+## AI/API Integration Guidelines
+
+### Google Generative AI Usage
+- Use base64 encoding for images instead of file upload to avoid network issues
+- Implement retry logic with exponential backoff for quota limits
+- Limit text output tokens to prevent excessive API usage
+- Always handle rate limiting gracefully
+
+### OCR Best Practices
+- Check if Tesseract is installed and accessible
+- Handle empty/corrupted images gracefully
+- Return empty string on OCR failure, don't crash
+- Limit OCR text length to prevent memory issues
+
+## Code Quality Standards
+
+### Function Requirements
+- Always include docstrings for public functions
+- Limit function complexity - break down large functions
+- Use type hints where appropriate
+- Include progress feedback for long-running operations
+
+### Performance Considerations
+- Limit string lengths to prevent memory issues (e.g., `text[:100]`)
+- Use generators for large datasets
+- Implement proper cleanup for temporary files
+- Cache results when appropriate
+
+### Input Validation
+```python
+# Always validate inputs
+if not file_path or not os.path.exists(file_path):
+    return []
+
+if not image_list:
+    print(f"No images found in {file_path}")
+    return [], []
+```
+
+## Testing & Debugging
+
+### Testing Patterns
+- Create debug scripts that test individual components
+- Use progress tracking for multi-step operations
+- Include error simulation for robust testing
+- Test with various file formats and edge cases
+
+### Logging Standards
+- Use descriptive error messages with context
+- Include file paths/names in error messages
+- Limit error message length to prevent spam
+- Provide user-friendly progress updates
+
+## Streamlit Integration
+
+### UI Best Practices
+- Use proper Streamlit components for file uploads
+- Implement progress bars for long operations
+- Handle file upload validation
+- Provide clear user feedback and error messages
+
+### Session Management
+- Use `st.session_state` for persistent data
+- Clear temporary files after processing
+- Handle multiple file uploads gracefully
+
+## Database Integration
+
+### SQLAlchemy Patterns
+- Use proper ORM models in `models.py`
+- Implement database migrations properly
+- Handle database connection errors gracefully
+- Use transactions for data consistency
+
+## Security & Privacy
+
+### Data Handling
+- Never log sensitive data or API keys
+- Clean up temporary files after processing
+- Validate file types before processing
+- Implement proper file size limits
+
+### API Security
+- Use environment variables for all credentials
+- Implement proper rate limiting
+- Handle API quota exhaustion gracefully
+- Never expose API keys in client-side code
+
+## Common Patterns to Follow
+
+### File Processing Pipeline
+1. Validate input file exists and is correct type
+2. Extract content (images/text) with error handling
+3. Process each item individually with continue-on-error
+4. Clean up and return structured results
+5. Provide progress feedback for long operations
+
+### Error Recovery
+- Always provide fallback values (empty string, empty list)
+- Log errors with context but continue processing
+- Implement retry logic for transient failures
+- Gracefully degrade functionality when services are unavailable
+
+## Code Review Checklist
+- [ ] All API keys use environment variables
+- [ ] Error handling wraps all external calls
+- [ ] Long operations provide progress feedback
+- [ ] Input validation prevents crashes
+- [ ] Temporary files are cleaned up
+- [ ] Functions have appropriate length limits
+- [ ] Database operations use transactions
+- [ ] File paths are properly validated 

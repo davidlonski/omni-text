@@ -1,0 +1,81 @@
+
+
+<Interface>
+    <MainContent>
+
+            <Sidebar>
+                <Button id="upload_doc" label="Upload Doc" />
+                <CurrentDocument>
+                    <Label>Current Doc Upload</Label>
+                </CurrentDocument>
+                <Button id="process_doc" label="Process Doc" />
+                <Button id="export_doc" label="Export Doc As" />
+            </Sidebar>
+
+            <Section id="preview_doc" label="Preview Doc" />
+
+            <SelectionPane>
+                <Button id="preview_doc" label="Preview Doc" />
+            </SelectionPane>
+
+            <DocPreview>
+                <Title>Doc Preview</Title>
+                <SubTitle>Doc Name</SubTitle>
+                
+
+                <DocOutlook>
+                    <Scrollable>
+                        <List>
+                            <Item>
+                                <ExtractedText>This is text extracted from document</ExtractedText>
+                            </Item>
+                            <Item>
+                                <ImagePreview>
+                                    <Image src="image1.png" />
+                                </ImagePreview>
+                                <GeneratedText>This is the image generated desc</GeneratedText>
+                            </Item>
+                            <Item>
+                                <GeneratedText>This is the image generated desc</GeneratedText>
+                            </Item>
+                        </List>
+                    </Scrollable>
+                </DocOutlook>
+
+                <DocSection>
+                    <Scrollable>
+                        <List>
+                            <Item>
+                            <Text>This is text extracted from document</Text>
+                                <Controls>
+                                    <Button label="Preview" />
+                                    <Button label="Delete" />
+                                    <Button label="Save" />
+                                </Controls>
+                            </Item>
+                            <Item>
+                                <Image src="image1.png" />
+                                <Controls>
+                                    <Button label="Preview" />
+                                    <Button label="Delete" />
+                                    <Button label="Save" />
+                                </Controls>
+                            </Item>
+                            <Item>
+                                <Text>This is the image generated desc</Text>
+                                <Controls>
+                                    <Button label="Preview" />
+                                    <Button label="Delete" />
+                                    <Button label="Save" />
+                                </Controls>
+                            </Item>
+                        </List>
+                    </Scrollable>
+                </DocSection>
+
+
+            </DocPreview>
+
+            
+    </MainContent>
+</Interface>
