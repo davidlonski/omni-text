@@ -31,12 +31,13 @@ def Extract_Office(filePath):
 
     if not list:
         print(f"No images found in {filePath}")
-        return [], []
+        return [], [], []
 
     sorted_list = sorted(list, key=natural_sort_key)
 
     description_list = []
     generated_description_list = []
+    image_paths = []
 
     for item in sorted_list:
         
@@ -60,12 +61,13 @@ def Extract_Office(filePath):
             if cleaned_description.strip() and cleaned_generatedDescription.strip():
                 description_list.append(cleaned_description)
                 generated_description_list.append(cleaned_generatedDescription)
+                image_paths.append(item)
               
         except Exception as e:
             print(f"Error processing {item}: {str(e)[:100]}...")
             continue  # Continue with next image instead of breaking
 
-    return description_list, generated_description_list
+    return description_list, generated_description_list, image_paths
 
 
 ###########################################

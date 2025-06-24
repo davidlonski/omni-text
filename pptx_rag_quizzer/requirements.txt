@@ -1,0 +1,7 @@
+streamlit
+google-generativeai
+sentence-transformers
+chromadb
+python-pptx
+Pillow
+setuptools

@@ -2,7 +2,9 @@ import streamlit as st
 import os
 from models import Document, Image, DocumentType, ImageStatus
 from datetime import datetime 
-from util import Extract_Office, extract_text_from_docx, extract_text_from_pptx, extract_text_from_pdf
+from util import extract_text_from_docx, extract_text_from_pptx, extract_text_from_pdf
+from ppt_notes import extract_images_and_add_notes
+from ppt_extraction import Extract_Office
 import tempfile
 from pathlib import Path
 from PIL import Image as PILImage
@@ -56,6 +58,8 @@ def render_sidebar():
     if uploaded_file and not st.session_state.processing:
         if st.button("🔄 Process Doc", use_container_width=True):
             process_document(uploaded_file)
+        if st.button("🔄 Process Notes", use_container_width=True):
+            process_notes_pptx(uploaded_file)
     
     # Export Doc As
     if st.session_state.current_document and st.session_state.current_document.status == "completed":
@@ -143,11 +147,10 @@ def render_doc_section(doc):
         
         # Use container instead of columns to avoid nesting
         with st.container():
-            st.text_area(
+            edited_text = st.text_area(
                 "Document Text",
                 doc.processed_text,
                 height=120,
-                disabled=True,
                 key="main_text_preview"
             )
             
@@ -155,14 +158,16 @@ def render_doc_section(doc):
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 if st.button("👁️ Preview Text", key="preview_text_main"):
-                    show_text_preview(doc.processed_text)
+                    show_text_preview(edited_text)
             with col2:
                 if st.button("🗑️ Delete Text", key="delete_text_main"):
                     doc.processed_text = None
                     st.rerun()
             with col3:
                 if st.button("💾 Save Text", key="save_text_main"):
+                    doc.processed_text = edited_text
                     st.success("✅ Text saved!")
+                    st.rerun()
         
         st.divider()
     
@@ -182,24 +187,40 @@ def render_doc_section(doc):
                         st.image(pil_img, width=400)
                     except Exception as e:
                         st.error(f"Error loading image: {e}")
+                else:
+                    st.warning(f"⚠️ Image file not found: {img.file_path}")
+                    st.info(f"Current working directory: {os.getcwd()}")
+                    st.info(f"Looking for file at: {os.path.abspath(img.file_path)}")
                 
                 # Display OCR text if available
                 if img.original_text:
-                    st.text_area(
+                    ocr_text = st.text_area(
                         "OCR Text",
                         img.original_text,
                         height=80,
-                        disabled=True,
+                        key=f"ocr_main_{img.id}"
+                    )
+                else:
+                    ocr_text = st.text_area(
+                        "OCR Text",
+                        "",
+                        height=80,
                         key=f"ocr_main_{img.id}"
                     )
                 
                 # Display AI description if available
                 if img.llm_description:
-                    st.text_area(
+                    ai_desc = st.text_area(
                         "AI Generated Description",
                         img.llm_description,
                         height=80,
-                        disabled=True,
+                        key=f"ai_desc_main_{img.id}"
+                    )
+                else:
+                    ai_desc = st.text_area(
+                        "AI Generated Description",
+                        "",
+                        height=80,
                         key=f"ai_desc_main_{img.id}"
                     )
                 
@@ -214,10 +235,75 @@ def render_doc_section(doc):
                         st.rerun()
                 with col3:
                     if st.button("💾 Save", key=f"save_img_main_{img.id}"):
+                        # Save the edited content
+                        img.original_text = ocr_text
+                        img.llm_description = ai_desc
                         img.status = ImageStatus.APPROVED
-                        st.success("✅ Image saved!")
+                        st.success("✅ Image content saved!")
+                        st.rerun()
             
             st.divider()
+
+def process_notes_pptx(uploaded_file):
+    """Process PowerPoint file to add OCR and AI-generated notes to images"""
+    # Check if file is PowerPoint
+    if not uploaded_file.name.lower().endswith('.pptx'):
+        st.error("❌ Please upload a PowerPoint (.pptx) file for notes processing")
+        return
+    
+    st.session_state.processing = True
+    
+    with st.spinner("Processing PowerPoint images and adding notes..."):
+        try:
+            # Save uploaded file temporarily
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as tmp_input:
+                tmp_input.write(uploaded_file.getvalue())
+                input_path = tmp_input.name
+            
+            # Create output path
+            with tempfile.NamedTemporaryFile(delete=False, suffix='_with_notes.pptx') as tmp_output:
+                output_path = tmp_output.name
+            
+            # Process the PowerPoint file
+            extract_images_and_add_notes(input_path, output_path)
+            
+            # Read the processed file for download
+            with open(output_path, 'rb') as f:
+                processed_file_data = f.read()
+            
+            # Clean up temporary files
+            try:
+                os.unlink(input_path)
+                os.unlink(output_path)
+            except Exception as cleanup_error:
+                print(f"Cleanup error: {cleanup_error}")
+            
+            st.session_state.processing = False
+            st.success("✅ PowerPoint notes processing completed!")
+            
+            # Provide download button
+            output_filename = f"{uploaded_file.name.rsplit('.', 1)[0]}_with_notes.pptx"
+            st.download_button(
+                label="📥 Download PowerPoint with Notes",
+                data=processed_file_data,
+                file_name=output_filename,
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                use_container_width=True
+            )
+            
+        except Exception as e:
+            st.error(f"❌ Error processing PowerPoint: {str(e)[:100]}...")
+            print(f"Full error: {e}")
+            st.session_state.processing = False
+            
+            # Clean up files on error
+            try:
+                if 'input_path' in locals():
+                    os.unlink(input_path)
+                if 'output_path' in locals():
+                    os.unlink(output_path)
+            except:
+                pass
 
 def process_document(uploaded_file):
     """Process the uploaded document"""
@@ -249,13 +335,13 @@ def process_document(uploaded_file):
             
             # Extract images and process them
             try:
-                description_list, generated_description_list = Extract_Office(temp_path)
+                description_list, generated_description_list, image_paths = Extract_Office(temp_path)
                 
                 # Create image objects
-                for i, (ocr_text, ai_desc) in enumerate(zip(description_list, generated_description_list)):
+                for i, (ocr_text, ai_desc, img_path) in enumerate(zip(description_list, generated_description_list, image_paths)):
                     img_obj = Image(
                         page_number=i + 1,
-                        file_path=f"extracted_images/image_{i}.png",
+                        file_path=img_path,
                         base64_image=None,  # Add missing field
                         original_text=ocr_text,
                         llm_description=ai_desc,
