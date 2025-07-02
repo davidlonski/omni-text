@@ -3,6 +3,7 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 import uuid
 import random
+import json
 
 @st.cache_resource
 def get_embedding_model():
@@ -26,7 +27,7 @@ class RAGCore:
 
     def build(self):
         """
-        Builds the vector database from the text content.
+        Builds the vector database from the text content and image descriptions.
 
         This method extracts text, creates embeddings, and populates the
         ChromaDB collection.
@@ -34,17 +35,31 @@ class RAGCore:
         Returns:
             bool: True if the build was successful, False otherwise.
         """
-        all_texts = [item['content'] for item in self.extracted_data if item['type'] == 'text']
+        all_texts = []
+        all_ids = []
+        all_metadatas = []
+        
+        # Process text items
+        for item in self.extracted_data:
+            if item['type'] == 'text':
+                all_texts.append(item['content'])
+                all_ids.append(item['id'])
+                all_metadatas.append({
+                    "slide_number": item['slide_number'], 
+                    "source": item['source']
+                })
+            elif item['type'] == 'image' and 'description' in item:
+                # Include image descriptions as text content
+                all_texts.append(f"Image on slide {item['slide_number']}: {item['description']}")
+                all_ids.append(f"img_desc_{item['id']}")
+                all_metadatas.append({
+                    "slide_number": item['slide_number'], 
+                    "source": "image_description"
+                })
         
         if not all_texts:
             st.error("No text content available to build the knowledge base.")
             return False
-
-        all_ids = [item['id'] for item in self.extracted_data if item['type'] == 'text']
-        all_metadatas = [
-            {"slide_number": item['slide_number'], "source": item['source']}
-            for item in self.extracted_data if item['type'] == 'text'
-        ]
 
         # Create embeddings
         embeddings = self.embedding_model.encode(all_texts, show_progress_bar=True)
@@ -70,11 +85,16 @@ class RAGCore:
                          collection is empty.
         """
         if self.collection and self.collection.count() > 0:
-            # Get total count and select a random offset
-            total_count = self.collection.count()
             
             # Get all documents and select randomly
             all_docs = self.collection.get()['documents']
+            
             if all_docs:
-                return random.choice(all_docs)
+                random_content = random.choice(all_docs)
+                print("--------------------------------")
+                print("This is all the context to choose from: ", all_docs)
+                print("--------------------------------")
+                print("This is the random content: ", random_content)
+                print("--------------------------------")
+                return random_content
         return None

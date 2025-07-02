@@ -1,10 +1,10 @@
-import warnings
-
 import streamlit as st
 import io
 from PIL import Image
 import os
 from dotenv import load_dotenv
+import json
+import base64
 
 # Import the modules from our package
 from pptx_rag_quizzer.utils import configure_gemini, ExtractText_LLM, ExtractText_OCR, clean_text, clean_text_with_llm
@@ -60,6 +60,17 @@ def reset_app():
         del st.session_state[key]
     st.rerun()
 
+def prepare_data_for_json(data_list):
+    """Convert binary data to base64 strings for JSON serialization."""
+    json_safe_data = []
+    for item in data_list:
+        json_item = item.copy()
+        if item['type'] == 'image' and isinstance(item['content'], bytes):
+            # Convert binary image data to base64 string
+            json_item['content'] = base64.b64encode(item['content']).decode('utf-8')
+        json_safe_data.append(json_item)
+    return json_safe_data
+
 # --- Sidebar ---
 with st.sidebar:
     st.header("Configuration & Control")
@@ -79,6 +90,15 @@ if st.session_state.app_stage == 'upload':
             st.session_state.images_to_describe = [
                 item for item in st.session_state.extracted_data if item['type'] == 'image'
             ]
+
+            # Convert data for JSON serialization
+            extracted_data_json = json.dumps(prepare_data_for_json(st.session_state.extracted_data), indent=2)
+            # write json to a file, if content exists, overwrite it
+            if os.path.exists('extracted_data_stage1.json'):
+                os.remove('extracted_data_stage1.json')
+            with open('extracted_data_stage1.json', 'w') as f:
+                f.write(extracted_data_json)
+
             st.session_state.current_image_index = 0
             st.success(f"Parsed! Found {len(st.session_state.extracted_data) - len(st.session_state.images_to_describe)} text blocks and {len(st.session_state.images_to_describe)} images.")
             
@@ -111,21 +131,12 @@ elif st.session_state.app_stage == 'describe_images':
 
         cleaned_text = clean_text_with_llm(description)
 
-
-
-        
         description = st.text_area("What is important about this image?", key=f"desc_{img_item['id']}", value=cleaned_text)
         
         if st.button("Submit Description", key=f"submit_{idx}"):
             if description:
-                # Add description to the main data list
-                st.session_state.extracted_data.append({
-                    "id": f"desc_{img_item['id']}",
-                    "type": "text",
-                    "content": f"Description for image on slide {img_item['slide_number']}: {description}",
-                    "slide_number": img_item['slide_number'],
-                    "source": "image_description"
-                })
+                # Add description directly to the image object
+                img_item['description'] = description
                 st.session_state.current_image_index += 1
                 st.rerun()
             else:
@@ -138,6 +149,16 @@ elif st.session_state.app_stage == 'describe_images':
 # STAGE 3: Initialize RAG
 elif st.session_state.app_stage == 'initialize_rag':
     with st.spinner("Building the knowledge base... This may take a moment."):
+
+        # Convert data for JSON serialization
+        extracted_data_json = json.dumps(prepare_data_for_json(st.session_state.extracted_data), indent=2)
+        # write json to a file, if content exists, overwrite it
+        if os.path.exists('extracted_data_stage2.json'):
+            os.remove('extracted_data_stage2.json')
+        with open('extracted_data_stage2.json', 'w') as f:
+            f.write(extracted_data_json)
+        
+        
         rag_core = RAGCore(st.session_state.extracted_data)
         if rag_core.build():
             st.session_state.rag_core = rag_core

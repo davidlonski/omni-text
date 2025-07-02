@@ -23,7 +23,7 @@ class QuizMaster:
         random_context = self.rag_core.get_random_context()
         if not random_context:
             return None
-
+ 
         prompt = f"""
         You are an expert quiz designer. Based on the following text from a document, generate one clear, open-ended question that tests understanding of a key concept. Also, provide the correct answer based *only* on the text.
 
